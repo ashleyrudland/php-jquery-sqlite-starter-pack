@@ -1,0 +1,24 @@
+service: php-jquery-sqlite-starter-pack
+image: ashleyrudland87/php-jquery-sqlite-starter-pack
+
+servers:
+  web:
+    hosts:
+      - <%= ENV["VPS_IP_ADDRESS"] %>
+
+env:
+  clear:
+    IS_PROD: "y"
+
+volumes:
+  - /data:/data
+
+registry:
+  username: 
+    - DOCKER_USERNAME
+  password:
+    - DOCKER_PASSWORD
+
+healthcheck:
+  path: /
+  port: 80
