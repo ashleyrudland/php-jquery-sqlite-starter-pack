@@ -17,6 +17,7 @@ jobs:
             # Use the same ssh-agent socket value across all jobs
             SSH_AUTH_SOCK: /tmp/ssh_agent.sock
             VPS_IP_ADDRESS: ${{ secrets.VPS_IP_ADDRESS }}
+            SQLITE_WEB_PASSWORD: ${{ secrets.SQLITE_WEB_PASSWORD }}
 
         steps:
             - name: Checkout code
