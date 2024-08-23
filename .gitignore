@@ -25,4 +25,4 @@
 /vendors/*
 
 .env
-*.sqlite
+*.sqlite*
