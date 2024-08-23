@@ -16,6 +16,7 @@ jobs:
             DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
             # Use the same ssh-agent socket value across all jobs
             SSH_AUTH_SOCK: /tmp/ssh_agent.sock
+            VPS_IP_ADDRESS: ${{ secrets.VPS_IP_ADDRESS }}
 
         steps:
             - name: Checkout code
