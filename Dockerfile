@@ -1,13 +1,15 @@
 FROM php:8.2-apache
 
 # Install SQLite, Python, and other dependencies
-RUN apt-get update && apt-get install -y sqlite3 libsqlite3-dev python3 python3-pip
+RUN apt-get update && apt-get install -y sqlite3 libsqlite3-dev python3 python3-pip python3-venv
 
 # Install PHP SQLite extension
 RUN docker-php-ext-install pdo pdo_sqlite
 
-# Install SQLite Web
-RUN pip3 install sqlite-web
+# Create a virtual environment and install SQLite Web
+RUN python3 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+RUN pip install sqlite-web
 
 # Enable Apache rewrite module
 RUN a2enmod rewrite
@@ -32,7 +34,7 @@ RUN echo '#!/bin/bash\n\
 	if [ -z "$SQLITE_WEB_PASSWORD" ]; then\n\
 	echo "SQLITE_WEB_PASSWORD is not set. SQLite Web will not start."\n\
 	else\n\
-	sqlite_web -H 0.0.0.0 -p 8080 -P $SQLITE_WEB_PASSWORD /data/database.sqlite &\n\
+	/opt/venv/bin/sqlite_web -H 0.0.0.0 -p 8080 -P $SQLITE_WEB_PASSWORD /data/database.sqlite &\n\
 	fi\n\
 	apache2-foreground' > /usr/local/bin/start.sh && \
 	chmod +x /usr/local/bin/start.sh
