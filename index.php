@@ -1,11 +1,18 @@
 <?php
-// Enable error reporting for debugging
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
 
 // Database configuration
 $is_prod = getenv('IS_PROD') === 'y';
 $db_path = $is_prod ? '/data/database.sqlite' : './database.sqlite';
+
+
+// Error reporting
+if (!$is_prod) {
+    error_reporting(E_ALL);
+    ini_set('display_errors', 1);
+} else {
+    error_reporting(0);
+    ini_set('display_errors', 0);
+}
 
 // Ensure the data directory exists in production
 if ($is_prod && !is_dir('/data')) {
@@ -108,7 +115,7 @@ function getVpsCapacity()
 function getCachedDbTest($db)
 {
     $cacheFile = sys_get_temp_dir() . '/db_test_cache.json';
-    $cacheExpiry = 60; // Cache expiry in seconds
+    $cacheExpiry = getenv('IS_PROD') === 'y' ? 60 : 0; // Cache expiry in seconds
 
     if (file_exists($cacheFile) && (time() - filemtime($cacheFile) < $cacheExpiry)) {
         return json_decode(file_get_contents($cacheFile), true);
@@ -123,17 +130,36 @@ function getCachedDbTest($db)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     header('Content-Type: application/json');
 
-    switch ($_POST['action']) {
-        case 'dbTest':
-            $result = getCachedDbTest($db);
-            echo json_encode($result);
-            break;
-        case 'getCapacity':
-            $result = getVpsCapacity();
-            echo json_encode($result);
-            break;
-        default:
-            echo json_encode(['error' => 'Invalid action']);
+    // Start output buffering
+    ob_start();
+
+    try {
+        switch ($_POST['action']) {
+            case 'dbTest':
+                $result = getCachedDbTest($db);
+                echo json_encode($result);
+                break;
+            case 'getCapacity':
+                $result = getVpsCapacity();
+                echo json_encode($result);
+                break;
+            default:
+                echo json_encode(['error' => 'Invalid action']);
+        }
+    } catch (Exception $e) {
+        echo json_encode(['error' => $e->getMessage()]);
+    }
+
+    // Get the contents of the output buffer
+    $output = ob_get_clean();
+
+    // Check if the output is valid JSON
+    if (json_decode($output) === null) {
+        // If it's not valid JSON, there was probably a PHP error
+        echo json_encode(['error' => 'PHP Error: ' . $output]);
+    } else {
+        // If it's valid JSON, send it as is
+        echo $output;
     }
     exit;
 }
