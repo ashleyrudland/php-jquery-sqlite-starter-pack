@@ -104,13 +104,28 @@ function getVpsCapacity()
     return $capacity;
 }
 
+// Add this function for caching
+function getCachedDbTest($db)
+{
+    $cacheFile = sys_get_temp_dir() . '/db_test_cache.json';
+    $cacheExpiry = 60; // Cache expiry in seconds
+
+    if (file_exists($cacheFile) && (time() - filemtime($cacheFile) < $cacheExpiry)) {
+        return json_decode(file_get_contents($cacheFile), true);
+    }
+
+    $result = runDbTest($db);
+    file_put_contents($cacheFile, json_encode($result));
+    return $result;
+}
+
 // Handle AJAX requests
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     header('Content-Type: application/json');
 
     switch ($_POST['action']) {
         case 'dbTest':
-            $result = runDbTest($db);
+            $result = getCachedDbTest($db);
             echo json_encode($result);
             break;
         case 'getCapacity':
