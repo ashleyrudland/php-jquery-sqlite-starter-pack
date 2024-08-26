@@ -126,60 +126,6 @@ function getCachedDbTest($db)
     return $result;
 }
 
-// Add this function to log requests
-function logRequest()
-{
-    $logFile = sys_get_temp_dir() . '/request_log.json';
-    $maxEntries = 100; // Limit the number of entries to store
-
-    $newEntry = [
-        'timestamp' => date('Y-m-d H:i:s'),
-        'ip' => $_SERVER['REMOTE_ADDR'],
-        'user_agent' => $_SERVER['HTTP_USER_AGENT'],
-        'request_uri' => $_SERVER['REQUEST_URI'],
-    ];
-
-    if (file_exists($logFile)) {
-        $log = json_decode(file_get_contents($logFile), true);
-    } else {
-        $log = [];
-    }
-
-    array_unshift($log, $newEntry);
-    $log = array_slice($log, 0, $maxEntries);
-
-    file_put_contents($logFile, json_encode($log));
-}
-
-// Call this function at the beginning of the script
-logRequest();
-
-// Modify the getLatestLogs function to include request logs
-function getLatestLogs($count = 15)
-{
-    $logs = [];
-    $errorLog = ini_get('error_log');
-    $accessLog = '/var/log/apache2/access.log'; // Adjust this path if needed
-    $requestLog = sys_get_temp_dir() . '/request_log.json';
-
-    if (file_exists($errorLog)) {
-        $errors = array_slice(file($errorLog), -$count);
-        $logs['errors'] = array_map('trim', $errors);
-    }
-
-    if (file_exists($accessLog)) {
-        $access = array_slice(file($accessLog), -$count);
-        $logs['access'] = array_map('trim', $access);
-    }
-
-    if (file_exists($requestLog)) {
-        $requests = json_decode(file_get_contents($requestLog), true);
-        $logs['requests'] = array_slice($requests, 0, $count);
-    }
-
-    return $logs;
-}
-
 // Handle AJAX requests
 if (isset($_GET['action'])) {
     header('Content-Type: application/json');
@@ -195,10 +141,6 @@ if (isset($_GET['action'])) {
                 break;
             case 'getCapacity':
                 $result = getVpsCapacity();
-                echo json_encode($result);
-                break;
-            case 'getLogs':
-                $result = getLatestLogs();
                 echo json_encode($result);
                 break;
             default:
@@ -361,11 +303,6 @@ function runDbTest($db)
             </div>
         </div>
 		</div>
-
-        <div class="bg-white p-6 rounded-lg shadow-md">
-            <h2 class="text-lg font-semibold mb-4">Latest Logs</h2>
-            <textarea id="logsContent" class="w-full h-64 p-2 border rounded" readonly></textarea>
-        </div>
 	</main>
 
 	<script>
@@ -427,40 +364,8 @@ function runDbTest($db)
 				});
 			}
 
-			// Add this function to fetch logs via AJAX
-			function fetchLogs() {
-				$.ajax({
-					url: '?action=getLogs',
-					method: 'GET',
-					dataType: 'json',
-					success: function(result) {
-						let logsContent = '';
-						if (result.errors && result.errors.length > 0) {
-							logsContent += "Error Logs:\n" + result.errors.join("\n") + "\n\n";
-						}
-						if (result.access && result.access.length > 0) {
-							logsContent += "Access Logs:\n" + result.access.join("\n") + "\n\n";
-						}
-						if (result.requests && result.requests.length > 0) {
-							logsContent += "Request Logs:\n";
-							result.requests.forEach(function(request) {
-								logsContent += `${request.timestamp} - IP: ${request.ip} - User Agent: ${request.user_agent} - URI: ${request.request_uri}\n`;
-							});
-						}
-						$('#logsContent').val(logsContent);
-					},
-					error: function(xhr, status, error) {
-						$('#logsContent').val(`Error fetching logs: ${error}`);
-					}
-				});
-			}
-
 			runDbTest();
 			getCapacity();
-			fetchLogs();
-
-			// Refresh logs every 30 seconds
-			setInterval(fetchLogs, 30000);
 		});
 	</script>
 </body>

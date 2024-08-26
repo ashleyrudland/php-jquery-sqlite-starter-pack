@@ -9,12 +9,16 @@ servers:
 env:
   clear:
     IS_PROD: "y"
+    PHP_ERROR_REPORTING: "32767"
+    PHP_DISPLAY_ERRORS: "0"
+    PHP_LOG_ERRORS: "1"
+    SQLITE_WEB_PASSWORD: <%= ENV['SQLITE_WEB_PASSWORD'] %>
 
 volumes:
   - /data:/data
 
 registry:
-  username: 
+  username:
     - DOCKER_USERNAME
   password:
     - DOCKER_PASSWORD
@@ -22,3 +26,13 @@ registry:
 healthcheck:
   path: /
   port: 80
+  interval: 10s
+  timeout: 30s
+  retries: 3
+
+rolling_update:
+  max_unavailable: 0
+  max_surge: 1
+
+ports:
+  - 80:80
