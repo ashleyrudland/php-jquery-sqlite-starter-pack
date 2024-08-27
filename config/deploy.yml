@@ -29,9 +29,5 @@ healthcheck:
   timeout: 30s
   retries: 3
 
-rolling_update:
-  max_unavailable: 0
-  max_surge: 1
-
 ports:
   - 80:80
