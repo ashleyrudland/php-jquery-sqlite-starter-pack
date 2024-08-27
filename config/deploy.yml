@@ -24,7 +24,3 @@ registry:
 
 healthcheck:
   path: /
-  port: 80
-  interval: 10s
-  timeout: 30s
-  retries: 3
