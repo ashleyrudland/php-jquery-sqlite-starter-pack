@@ -278,7 +278,7 @@ function runDbTest($db)
 
 		<h2 class="font-semibold">The performance?</h2>
 
-		<p>PHP is around 2x faster. NextJS can do 30,000 writes/second on a $5/mo VPS, PHP can do 60,000+ writes/second on the same VPS! Try NextJS app <a href="https://vps.ashleyrudland.com" class="text-blue-600 underline underline-offset-4" target="_blank">here</a> and see below the results.</p>
+		<p>PHP is around 5x faster. NextJS can do 30,000 writes/second on a $5/mo VPS, PHP can do 150,000+ writes/second on the same VPS! Try NextJS app <a href="https://vps.ashleyrudland.com" class="text-blue-600 underline underline-offset-4" target="_blank">here</a> and see below the results.</p>
 
 
 		<div class="flex flex-col gap-6 sm:flex-row sm:gap-10">
