@@ -28,6 +28,3 @@ healthcheck:
   interval: 10s
   timeout: 30s
   retries: 3
-
-ports:
-  - 80:80
