@@ -24,8 +24,16 @@ try {
     $db = new SQLite3($db_path);
     $db->enableExceptions(true);
 
-    // Enable WAL mode for better performance
+    // Enable Write-Ahead Logging for better concurrency and performance
     $db->exec('PRAGMA journal_mode = WAL;');
+    // Set cache size to approximately 10MB (-10000 pages, where each page is 1KB)
+    $db->exec('PRAGMA cache_size = -10000;');
+    // Set synchronous mode to NORMAL for a balance between safety and performance
+    $db->exec('PRAGMA synchronous = NORMAL;');
+    // Store temporary tables and indices in memory instead of on disk
+    $db->exec('PRAGMA temp_store = MEMORY;');
+    // Set the maximum size of the memory-mapped I/O to approximately 1GB
+    $db->exec('PRAGMA mmap_size = 1000000000;');
 
     // Create table if it doesn't exist
     $db->exec('CREATE TABLE IF NOT EXISTS comments (
