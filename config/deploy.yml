@@ -6,6 +6,9 @@ servers:
     hosts:
       - <%= ENV["VPS_IP_ADDRESS"] %>
 
+builder:
+  arch: amd64
+  
 env:
   clear:
     IS_PROD: "y"
