@@ -4,7 +4,6 @@
 $is_prod = getenv('IS_PROD') === 'y';
 $db_path = $is_prod ? '/data/database.sqlite' : './database.sqlite';
 
-
 // Error reporting
 if (!$is_prod) {
     error_reporting(E_ALL);
@@ -25,15 +24,21 @@ try {
     $db->enableExceptions(true);
 
     // Enable Write-Ahead Logging for better concurrency and performance
-    $db->exec('PRAGMA journal_mode = WAL;');
-    // Set cache size to approximately 10MB (-10000 pages, where each page is 1KB)
-    $db->exec('PRAGMA cache_size = -10000;');
+    $db->exec('PRAGMA journal_mode = WAL');
+    // Increase cache size to approximately 100MB (-25000 pages, where each page is 4KB)
+    $db->exec('PRAGMA cache_size = -25000');
     // Set synchronous mode to NORMAL for a balance between safety and performance
-    $db->exec('PRAGMA synchronous = NORMAL;');
+    $db->exec('PRAGMA synchronous = NORMAL');
     // Store temporary tables and indices in memory instead of on disk
-    $db->exec('PRAGMA temp_store = MEMORY;');
+    $db->exec('PRAGMA temp_store = MEMORY');
     // Set the maximum size of the memory-mapped I/O to approximately 1GB
-    $db->exec('PRAGMA mmap_size = 1000000000;');
+    $db->exec('PRAGMA mmap_size = 1000000000');
+    // Enable foreign key constraints for data integrity
+    $db->exec('PRAGMA foreign_keys = ON');
+    // Set a busy timeout of 5 seconds to wait if the database is locked
+    $db->exec('PRAGMA busy_timeout = 5000');
+    // Enable incremental vacuuming to reclaim unused space and keep the database file size optimized
+    $db->exec('PRAGMA auto_vacuum = INCREMENTAL');
 
     // Create table if it doesn't exist
     $db->exec('CREATE TABLE IF NOT EXISTS comments (
@@ -123,7 +128,7 @@ function getVpsCapacity()
 function getCachedDbTest($db)
 {
     $cacheFile = sys_get_temp_dir() . '/db_test_cache.json';
-    $cacheExpiry = getenv('IS_PROD') === 'y' ? 60 : 0; // Cache expiry in seconds
+    $cacheExpiry = getenv('IS_PROD') === 'y' ? 300 : 0; // Cache expiry in seconds
 
     if (file_exists($cacheFile) && (time() - filemtime($cacheFile) < $cacheExpiry)) {
         return json_decode(file_get_contents($cacheFile), true);
@@ -176,27 +181,22 @@ function runDbTest($db)
 {
     $start = microtime(true);
     $totalInserts = 350000;
-    $chunkSize = 50;
+    $chunkSize = 100;
     $writes = 0;
     $failures = 0;
     $newRecords = [];
 
-    $stmt = $db->prepare('INSERT INTO comments (author, content) VALUES (:author, :content)');
+    $insertStmt = $db->prepare('INSERT INTO comments (author, content) VALUES (:author, :content)');
+    $selectStmt = $db->prepare('SELECT * FROM comments WHERE id = :id');
 
     for ($i = 0; $i < $totalInserts; $i += $chunkSize) {
-        $values = [];
-        for ($j = 0; $j < $chunkSize && ($i + $j) < $totalInserts; $j++) {
-            $values[] = [
-                'author' => substr(str_shuffle('abcdefghijklmnopqrstuvwxyz'), 0, 7),
-                'content' => substr(str_shuffle('abcdefghijklmnopqrstuvwxyz'), 0, 7),
-            ];
-        }
-
         $db->exec('BEGIN TRANSACTION');
-        foreach ($values as $value) {
-            $stmt->bindValue(':author', $value['author'], SQLITE3_TEXT);
-            $stmt->bindValue(':content', $value['content'], SQLITE3_TEXT);
-            if ($stmt->execute()) {
+        for ($j = 0; $j < $chunkSize && ($i + $j) < $totalInserts; $j++) {
+            $author = substr(str_shuffle('abcdefghijklmnopqrstuvwxyz'), 0, 7);
+            $content = substr(str_shuffle('abcdefghijklmnopqrstuvwxyz'), 0, 7);
+            $insertStmt->bindValue(':author', $author, SQLITE3_TEXT);
+            $insertStmt->bindValue(':content', $content, SQLITE3_TEXT);
+            if ($insertStmt->execute()) {
                 $newRecords[] = $db->lastInsertRowID();
                 $writes++;
             } else {
@@ -209,15 +209,14 @@ function runDbTest($db)
     $writeTime = microtime(true) - $start;
     $writesPerSecond = round($writes / $writeTime);
 
-    // Measure reads (sample a subset of new records to avoid memory issues)
+    // Measure reads
     $readStart = microtime(true);
     $reads = 0;
     $readSampleSize = min(10000, count($newRecords));
     $readSample = array_rand(array_flip($newRecords), $readSampleSize);
-    $stmt = $db->prepare('SELECT * FROM comments WHERE id = :id');
     foreach ($readSample as $id) {
-        $stmt->bindValue(':id', $id, SQLITE3_INTEGER);
-        $stmt->execute();
+        $selectStmt->bindValue(':id', $id, SQLITE3_INTEGER);
+        $selectStmt->execute();
         $reads++;
     }
     $readTime = microtime(true) - $readStart;
