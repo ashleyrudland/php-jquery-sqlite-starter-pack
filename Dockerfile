@@ -26,10 +26,8 @@ RUN echo "error_reporting = E_ALL" >> /usr/local/etc/php/php.ini && \
 	echo "log_errors = On" >> /usr/local/etc/php/php.ini && \
 	echo "error_log = /dev/stderr" >> /usr/local/etc/php/php.ini
 
-# Configure Apache to handle PHP errors gracefully
-RUN echo "php_flag log_errors on" >> /etc/apache2/apache2.conf && \
-	echo "php_value error_reporting 32767" >> /etc/apache2/apache2.conf && \
-	echo "php_flag display_errors off" >> /etc/apache2/apache2.conf
+# Configure Apache
+COPY apache-config.conf /etc/apache2/sites-available/000-default.conf
 
 # Start Apache
 CMD ["apache2-foreground"]

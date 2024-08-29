@@ -139,41 +139,207 @@ function getCachedDbTest($db)
     return $result;
 }
 
-// Handle AJAX requests
-if (isset($_GET['action'])) {
+// Handle routing
+$request_uri = $_SERVER['REQUEST_URI'];
+$path = parse_url($request_uri, PHP_URL_PATH);
+
+switch ($path) {
+    case '/':
+        handleHomePage($db);
+        break;
+    case '/api/db-test':
+        handleDbTest($db);
+        break;
+    case '/api/get-capacity':
+        handleGetCapacity();
+        break;
+    case '/api/up':
+        handleUpPage();
+        break;
+    default:
+        handle404();
+        break;
+}
+
+function handleHomePage($db)
+{
+    // Start of HTML
+    ?>
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>PHP vs NextJS - Ashley Rudland's PHP Playground</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+        <style>
+            .custom-gradient {
+                background: linear-gradient(90deg, #4F46E5, #7C3AED);
+            }
+        </style>
+    </head>
+    <body class="bg-white">
+
+        <main class="flex min-h-screen flex-col p-10 space-y-6">
+            <h1 class="font-bold text-xl">
+                PHP vs NextJS
+            </h1>
+
+            <p>
+                Built by <a href="https://x.com/ashleyrudland" class="text-blue-600 underline underline-offset-4">@ashleyrudland</a>. Inspired by recent <a class="text-blue-500 underline underline-offset-4" href="https://x.com/levelsio">@levelsio</a> lex <a href="https://www.youtube.com/watch?v=oFtjKbXKqbg" class="text-blue-600 underline underline-offset-4" target="_blank">pod</a>. I was curious to see how easy/hard it is to build a
+                PHP app using jQuery vs standard NextJS approach most engineers use today. Also how performant is it?
+            </p>
+
+            <h2 class="font-semibold">The result:</h2>
+            <p>
+            Easy & simple. 1 index.php file vs 5+ files in TypeScript for NextJS. View the source code
+                <a href="https://github.com/ashleyrudland/php-jquery-sqlite-starter-pack" class="text-blue-600 underline underline-offset-4" target="_blank"
+            >
+                    here
+                </a></p>
+
+            <h2 class="font-semibold">The performance?</h2>
+
+            <p>PHP is around 5x faster. NextJS can do 30,000 writes/second on a $5/mo VPS, PHP can do 150,000+ writes/second on the same VPS! Try NextJS app <a href="https://vps.ashleyrudland.com" class="text-blue-600 underline underline-offset-4" target="_blank">here</a> and see below the results.</p>
+
+
+            <div class="flex flex-col gap-6 sm:flex-row sm:gap-10">
+                <div id="dbTest" class="bg-white p-6 rounded-lg shadow-md flex-1">
+                    <h2 class="text-lg font-semibold mb-4">SQLite Writes/sec</h2>
+                    <div id="dbTestContent">
+                        <div class="flex flex-row gap-1 items-center">
+                            <svg class="animate-spin h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none"
+                                viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
+                                </circle>
+                                <path class="opacity-75" fill="currentColor"
+                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                </path>
+                            </svg>
+                            <span>Running test (<span id="runningTime">0.0</span>s)...</span>
+                        </div>
+                    </div>
+                </div>
+                <div id="capacity" class="bg-white p-6 rounded-lg shadow-md flex-1">
+                <h2 class="text-lg font-semibold mb-4">VPS Capacity</h2>
+                <div id="capacityContent">
+                    <div class="flex flex-row gap-1 items-center">
+                        <svg class="animate-spin h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <span>Loading capacity data...</span>
+                    </div>
+                </div>
+            </div>
+            </div>
+        </main>
+
+        <script>
+            $(document).ready(function () {
+                let startTime;
+                let timer;
+
+                function updateRunningTime() {
+                    if (startTime) {
+                        let runningTime = (Date.now() - startTime) / 1000;
+                        $('#runningTime').text(runningTime.toFixed(1));
+                    }
+                }
+
+                function getCapacity() {
+                    $.ajax({
+                        url: '/api/get-capacity',
+                        method: 'GET',
+                        dataType: 'json',
+                        success: function(result) {
+                            let content = '<ul>';
+                            for (let [key, value] of Object.entries(result)) {
+                                content += `<li>${key}: ${value}</li>`;
+                            }
+                            content += '</ul>';
+                            $('#capacityContent').html(content);
+                        },
+                        error: function(xhr, status, error) {
+                            $('#capacityContent').html(`<p>Error: ${error}</p>`);
+                        }
+                    });
+                }
+
+                function runDbTest() {
+                    startTime = Date.now();
+                    timer = setInterval(updateRunningTime, 200);
+
+                    $.ajax({
+                        url: '/api/db-test',
+                        method: 'GET',
+                        dataType: 'json',
+                        success: function (result) {
+                            clearInterval(timer);
+                            let content = '<ul>';
+                            content += `<li>DB size: ${result.dbSizeInMb >= 1024 ? (result.dbSizeInMb / 1024).toLocaleString(undefined, { maximumFractionDigits: 1 }) + 'GB' : result.dbSizeInMb.toLocaleString() + 'MB'}</li>`;
+                            content += `<li>Table size: ${result.total.toLocaleString()} records</li>`;
+                            content += `<li>Reads/sec: ${result.readsPerSecond.toLocaleString()}</li>`;
+                            content += `<li class="font-medium">Writes/sec: ${result.writesPerSecond.toLocaleString()}</li>`;
+                            if (result.failureRate > 0) {
+                                content += `<li>Failure rate: ${result.failureRate}%</li>`;
+                            }
+                            content += '</ul>';
+                            $('#dbTestContent').html(content);
+                        },
+                        error: function (xhr, status, error) {
+                            clearInterval(timer);
+                            $('#dbTestContent').html(`<p>Error: ${error}</p>`);
+                        }
+                    });
+                }
+
+                runDbTest();
+                getCapacity();
+            });
+        </script>
+    </body>
+    </html>
+    <?php
+// End of HTML
+}
+
+function handleDbTest($db)
+{
     header('Content-Type: application/json');
-
-    // Start output buffering
-    ob_start();
-
     try {
-        switch ($_GET['action']) {
-            case 'dbTest':
-                $result = getCachedDbTest($db);
-                echo json_encode($result);
-                break;
-            case 'getCapacity':
-                $result = getVpsCapacity();
-                echo json_encode($result);
-                break;
-            default:
-                echo json_encode(['error' => 'Invalid action']);
-        }
+        $result = getCachedDbTest($db);
+        echo json_encode($result);
     } catch (Exception $e) {
         echo json_encode(['error' => $e->getMessage()]);
     }
+    exit;
+}
 
-    // Get the contents of the output buffer
-    $output = ob_get_clean();
-
-    // Check if the output is valid JSON
-    if (json_decode($output) === null) {
-        // If it's not valid JSON, there was probably a PHP error
-        echo json_encode(['error' => 'PHP Error: ' . $output]);
-    } else {
-        // If it's valid JSON, send it as is
-        echo $output;
+function handleGetCapacity()
+{
+    header('Content-Type: application/json');
+    try {
+        $result = getVpsCapacity();
+        echo json_encode($result);
+    } catch (Exception $e) {
+        echo json_encode(['error' => $e->getMessage()]);
     }
+    exit;
+}
+
+function handleUpPage()
+{
+    header('Content-Type: application/json');
+    echo json_encode(['status' => 'up']);
+    exit;
+}
+
+function handle404()
+{
+    header("HTTP/1.0 404 Not Found");
+    echo "404 Not Found";
     exit;
 }
 
@@ -239,142 +405,3 @@ function runDbTest($db)
 }
 
 ?>
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-	<meta charset="UTF-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>PHP vs NextJS - Ashley Rudland's PHP Playground</title>
-	<script src="https://cdn.tailwindcss.com"></script>
-	<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-	<style>
-		.custom-gradient {
-			background: linear-gradient(90deg, #4F46E5, #7C3AED);
-		}
-	</style>
-</head>
-
-<body class="bg-white">
-
-	<main class="flex min-h-screen flex-col p-10 space-y-6">
-		<h1 class="font-bold text-xl">
-			PHP vs NextJS
-		</h1>
-
-		<p>
-			Built by <a href="https://x.com/ashleyrudland" class="text-blue-600 underline underline-offset-4">@ashleyrudland</a>. Inspired by recent <a class="text-blue-500 underline underline-offset-4" href="https://x.com/levelsio">@levelsio</a> lex <a href="https://www.youtube.com/watch?v=oFtjKbXKqbg" class="text-blue-600 underline underline-offset-4" target="_blank">pod</a>. I was curious to see how easy/hard it is to build a
-			PHP app using jQuery vs standard NextJS approach most engineers use today. Also how performant is it?
-		</p>
-
-		<h2 class="font-semibold">The result:</h2>
-		<p>
-		Easy & simple. 1 index.php file vs 5+ files in TypeScript for NextJS. View the source code
-			<a href="https://github.com/ashleyrudland/php-jquery-sqlite-starter-pack" class="text-blue-600 underline underline-offset-4" target="_blank"
-		>
-				here
-			</a></p>
-
-		<h2 class="font-semibold">The performance?</h2>
-
-		<p>PHP is around 5x faster. NextJS can do 30,000 writes/second on a $5/mo VPS, PHP can do 150,000+ writes/second on the same VPS! Try NextJS app <a href="https://vps.ashleyrudland.com" class="text-blue-600 underline underline-offset-4" target="_blank">here</a> and see below the results.</p>
-
-
-		<div class="flex flex-col gap-6 sm:flex-row sm:gap-10">
-			<div id="dbTest" class="bg-white p-6 rounded-lg shadow-md flex-1">
-				<h2 class="text-lg font-semibold mb-4">SQLite Writes/sec</h2>
-				<div id="dbTestContent">
-					<div class="flex flex-row gap-1 items-center">
-						<svg class="animate-spin h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none"
-							viewBox="0 0 24 24">
-							<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
-							</circle>
-							<path class="opacity-75" fill="currentColor"
-								d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-							</path>
-						</svg>
-						<span>Running test (<span id="runningTime">0.0</span>s)...</span>
-					</div>
-				</div>
-			</div>
-			<div id="capacity" class="bg-white p-6 rounded-lg shadow-md flex-1">
-            <h2 class="text-lg font-semibold mb-4">VPS Capacity</h2>
-            <div id="capacityContent">
-                <div class="flex flex-row gap-1 items-center">
-                    <svg class="animate-spin h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span>Loading capacity data...</span>
-                </div>
-            </div>
-        </div>
-		</div>
-	</main>
-
-	<script>
-		$(document).ready(function () {
-			let startTime;
-			let timer;
-
-			function updateRunningTime() {
-				if (startTime) {
-					let runningTime = (Date.now() - startTime) / 1000;
-					$('#runningTime').text(runningTime.toFixed(1));
-				}
-			}
-
-			function getCapacity() {
-				$.ajax({
-					url: '?action=getCapacity',
-					method: 'GET',
-					dataType: 'json',
-					success: function(result) {
-						let content = '<ul>';
-						for (let [key, value] of Object.entries(result)) {
-							content += `<li>${key}: ${value}</li>`;
-						}
-						content += '</ul>';
-						$('#capacityContent').html(content);
-					},
-					error: function(xhr, status, error) {
-						$('#capacityContent').html(`<p>Error: ${error}</p>`);
-					}
-				});
-			}
-
-			function runDbTest() {
-				startTime = Date.now();
-				timer = setInterval(updateRunningTime, 200);
-
-				$.ajax({
-					url: '?action=dbTest',
-					method: 'GET',
-					dataType: 'json',
-					success: function (result) {
-						clearInterval(timer);
-						let content = '<ul>';
-						content += `<li>DB size: ${result.dbSizeInMb >= 1024 ? (result.dbSizeInMb / 1024).toLocaleString(undefined, { maximumFractionDigits: 1 }) + 'GB' : result.dbSizeInMb.toLocaleString() + 'MB'}</li>`;
-						content += `<li>Table size: ${result.total.toLocaleString()} records</li>`;
-						content += `<li>Reads/sec: ${result.readsPerSecond.toLocaleString()}</li>`;
-						content += `<li class="font-medium">Writes/sec: ${result.writesPerSecond.toLocaleString()}</li>`;
-						if (result.failureRate > 0) {
-							content += `<li>Failure rate: ${result.failureRate}%</li>`;
-						}
-						content += '</ul>';
-						$('#dbTestContent').html(content);
-					},
-					error: function (xhr, status, error) {
-						clearInterval(timer);
-						$('#dbTestContent').html(`<p>Error: ${error}</p>`);
-					}
-				});
-			}
-
-			runDbTest();
-			getCapacity();
-		});
-	</script>
-</body>
-
-</html>
